@@ -28,7 +28,7 @@ export async function POST(
       ? { times_shown: review.times_shown + 1 }
       : action === "copied"
       ? { times_copied: review.times_copied + 1 }
-      : { times_used: review.times_used + 1 };
+      : { times_used: review.times_used + 1, status: "archived" };
 
   const { error: updateError } = await supabase
     .from("reviews")
