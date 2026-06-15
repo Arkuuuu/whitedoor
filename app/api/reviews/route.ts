@@ -35,16 +35,16 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { event_id, review_text } = body;
 
-  if (!event_id || !review_text) {
+  if (!review_text) {
     return NextResponse.json(
-      { error: "event_id and review_text are required" },
+      { error: "review_text is required" },
       { status: 400 }
     );
   }
 
   const { data, error } = await supabase
     .from("reviews")
-    .insert({ event_id, review_text })
+    .insert({ event_id: event_id ?? null, review_text })
     .select()
     .single();
 

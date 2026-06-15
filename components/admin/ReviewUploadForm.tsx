@@ -32,15 +32,16 @@ export function ReviewUploadForm({ events, onSuccess }: ReviewUploadFormProps) {
   async function handleSingle(e: React.FormEvent) {
     e.preventDefault();
     if (!eventId || !reviewText.trim()) {
-      toast.error("Select an event and enter review text");
+      toast.error("Select a destination and enter review text");
       return;
     }
     setSaving(true);
+    const actualEventId = eventId === "__general__" ? null : eventId;
     try {
       const res = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_id: eventId, review_text: reviewText.trim() }),
+        body: JSON.stringify({ event_id: actualEventId, review_text: reviewText.trim() }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       toast.success("Review added");
@@ -56,13 +57,13 @@ export function ReviewUploadForm({ events, onSuccess }: ReviewUploadFormProps) {
   async function handleBulk(e: React.FormEvent) {
     e.preventDefault();
     if (!eventId || !bulkFile) {
-      toast.error("Select an event and upload a file");
+      toast.error("Select a destination and upload a file");
       return;
     }
     setSaving(true);
     try {
       const fd = new FormData();
-      fd.append("event_id", eventId);
+      fd.append("event_id", eventId); // "__general__" is handled by the API
       fd.append("file", bulkFile);
       const res = await fetch("/api/reviews/bulk", { method: "POST", body: fd });
       if (!res.ok) throw new Error((await res.json()).error);
@@ -80,12 +81,13 @@ export function ReviewUploadForm({ events, onSuccess }: ReviewUploadFormProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Event</Label>
+        <Label>Destination</Label>
         <Select value={eventId} onValueChange={(v) => v !== null && setEventId(v)}>
           <SelectTrigger>
-            <SelectValue placeholder="Select an event…" />
+            <SelectValue placeholder="Select event or General…" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="__general__">General Reviews (homepage)</SelectItem>
             {activeEvents.map((ev) => (
               <SelectItem key={ev.id} value={ev.id}>
                 {ev.name}

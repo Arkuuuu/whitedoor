@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ReviewCard } from "@/components/public/ReviewCard";
 import { ImageGallery } from "@/components/public/ImageGallery";
-import { getShownReviewIds, addShownReviewId } from "@/lib/review-session";
+import { getShownReviewIds, addShownReviewId, getUsedReviewIds, markReviewUsed } from "@/lib/review-session";
 import type { Review, Image as ImageType } from "@/lib/types";
 
 export function ReviewContent() {
@@ -25,12 +25,13 @@ export function ReviewContent() {
       setLoading(true);
       setError("");
 
-      const shown = getShownReviewIds(eventId);
-      if (excludeCurrentId && !shown.includes(excludeCurrentId)) {
+      if (excludeCurrentId) {
         addShownReviewId(eventId, excludeCurrentId);
       }
 
-      const exclude = getShownReviewIds(eventId).join(",");
+      const shown = getShownReviewIds(eventId);
+      const used = getUsedReviewIds();
+      const exclude = [...new Set([...shown, ...used])].join(",");
       const url = `/api/reviews/random?eventId=${eventId}${exclude ? `&exclude=${exclude}` : ""}`;
 
       try {
@@ -75,6 +76,7 @@ export function ReviewContent() {
   async function handleReviewPosted() {
     if (!review) return;
     setPosted(true);
+    markReviewUsed(review.id);
     await fetch(`/api/reviews/${review.id}/track`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

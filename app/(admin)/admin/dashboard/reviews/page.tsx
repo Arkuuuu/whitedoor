@@ -46,8 +46,8 @@ export default function ReviewsPage() {
     loadData();
   }, [loadData]);
 
-  const getEventName = (id: string) =>
-    events.find((e) => e.id === id)?.name ?? "Unknown Event";
+  const getEventName = (id: string | null) =>
+    id ? (events.find((e) => e.id === id)?.name ?? "Unknown Event") : "General";
 
   const filtered = reviews.filter((r) => {
     if (filterEventId !== "all" && r.event_id !== filterEventId) return false;

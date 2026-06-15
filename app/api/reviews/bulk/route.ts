@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
   const file = formData.get("file") as File | null;
   const eventId = formData.get("event_id") as string | null;
 
-  if (!file || !eventId) {
+  if (!file) {
     return NextResponse.json(
-      { error: "file and event_id are required" },
+      { error: "file is required" },
       { status: 400 }
     );
   }
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   }
 
   const rows = reviewTexts.map((text) => ({
-    event_id: eventId,
+    event_id: eventId && eventId !== "__general__" ? eventId : null,
     review_text: text,
   }));
 

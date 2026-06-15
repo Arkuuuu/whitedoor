@@ -10,7 +10,7 @@ export interface Event {
 
 export interface Review {
   id: string;
-  event_id: string;
+  event_id: string | null;
   review_text: string;
   status: "active" | "archived";
   times_shown: number;
