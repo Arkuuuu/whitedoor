@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Copy, RefreshCw, CheckCheck } from "lucide-react";
+import { Copy, RefreshCw, CheckCheck, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   getGeneralShownIds,
   addGeneralShownId,
   getUsedReviewIds,
+  markReviewUsed,
 } from "@/lib/review-session";
 import type { Review } from "@/lib/types";
 
@@ -14,6 +15,7 @@ export function GeneralReviewWidget() {
   const [review, setReview] = useState<Review | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [posted, setPosted] = useState(false);
   const [error, setError] = useState("");
 
   const fetchReview = useCallback(async (currentId?: string) => {
@@ -65,9 +67,35 @@ export function GeneralReviewWidget() {
     }
   }
 
+  async function handleReviewPosted() {
+    if (!review) return;
+    const usedId = review.id;
+    setPosted(true);
+    markReviewUsed(usedId);
+    await fetch(`/api/reviews/${usedId}/track`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "used" }),
+    });
+    setTimeout(() => {
+      setPosted(false);
+      fetchReview(usedId);
+    }, 1500);
+  }
+
   if (error) {
     return (
       <div className="text-center py-10 text-gray-400 text-sm">{error}</div>
+    );
+  }
+
+  if (posted) {
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
+        <PartyPopper className="w-10 h-10 text-green-500 mx-auto mb-3" />
+        <p className="font-semibold text-green-800">Thank you for your feedback!</p>
+        <p className="text-green-600 text-sm mt-1">Getting you a fresh review…</p>
+      </div>
     );
   }
 
@@ -82,17 +110,7 @@ export function GeneralReviewWidget() {
       ) : (
         <p className="text-gray-700 leading-relaxed">{review?.review_text}</p>
       )}
-      <div className="flex gap-3 pt-1">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fetchReview(review?.id)}
-          disabled={loading}
-          className="gap-1.5"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          Another
-        </Button>
+      <div className="flex flex-wrap gap-3 pt-1">
         <Button
           size="sm"
           onClick={handleCopy}
@@ -108,6 +126,25 @@ export function GeneralReviewWidget() {
               <Copy className="w-3.5 h-3.5" /> Copy Review
             </>
           )}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fetchReview(review?.id)}
+          disabled={loading}
+          className="gap-1.5"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Another
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleReviewPosted}
+          disabled={loading || !review}
+          className="gap-1.5 text-green-600 hover:text-green-700 hover:bg-green-50"
+        >
+          Review Posted ✓
         </Button>
       </div>
     </div>

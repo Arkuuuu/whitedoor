@@ -69,19 +69,25 @@ export function ReviewContent() {
   }, [eventId, fetchReview]);
 
   async function handleAnotherReview() {
-    await fetchReview(review?.id);
     setPosted(false);
+    await fetchReview(review?.id);
   }
 
   async function handleReviewPosted() {
     if (!review) return;
+    const usedId = review.id;
     setPosted(true);
-    markReviewUsed(review.id);
-    await fetch(`/api/reviews/${review.id}/track`, {
+    markReviewUsed(usedId);
+    await fetch(`/api/reviews/${usedId}/track`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "used" }),
     });
+    // Archive confirmed — auto-advance so the used review is never visible again
+    setTimeout(() => {
+      setPosted(false);
+      fetchReview(usedId);
+    }, 1500);
   }
 
   return (
