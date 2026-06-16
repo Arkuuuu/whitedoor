@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, CheckCircle2, XCircle, FileSpreadsheet, Info, Copy } from "lucide-react";
+import { Upload, CheckCircle2, XCircle, FileSpreadsheet, Info, Copy, Download } from "lucide-react";
 import { toast } from "sonner";
 import type { Image as ImageType } from "@/lib/types";
 
@@ -96,9 +96,19 @@ export default function ImportsPage() {
 
       {/* ── Format guide ── */}
       <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 space-y-3">
-        <div className="flex items-center gap-2 font-semibold text-blue-800">
-          <Info className="w-4 h-4" />
-          Excel Format (.xlsx)
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-semibold text-blue-800">
+            <Info className="w-4 h-4" />
+            Excel Format (.xlsx)
+          </div>
+          <a
+            href="/api/import/template"
+            download
+            className="flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Download Template
+          </a>
         </div>
         <div className="grid sm:grid-cols-2 gap-4 text-sm text-blue-900">
           <div>
