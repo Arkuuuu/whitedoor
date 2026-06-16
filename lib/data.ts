@@ -42,11 +42,22 @@ export async function getEventImages(eventId: string): Promise<ImageType[]> {
   cacheLife("minutes");
   cacheTag("images", `images-${eventId}`);
 
-  const { data } = await supabase()
+  const db = supabase();
+
+  // Exclude images that are privately linked to a review
+  const { data: linked } = await db.from("review_images").select("image_id");
+  const excludedIds = (linked ?? []).map((r) => r.image_id);
+
+  let query = db
     .from("images")
     .select("*")
     .eq("event_id", eventId)
     .order("created_at");
 
+  if (excludedIds.length > 0) {
+    query = query.not("id", "in", `(${excludedIds.join(",")})`);
+  }
+
+  const { data } = await query;
   return (data ?? []) as ImageType[];
 }

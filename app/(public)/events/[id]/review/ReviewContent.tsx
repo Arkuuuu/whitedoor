@@ -420,7 +420,16 @@ export function ReviewContent() {
           <div className="flex items-center justify-center gap-3">
             <span className="text-sm text-gray-400">Need a different review?</span>
             <button
-              onClick={() => fetchReview(review?.id)}
+              onClick={() => {
+                if (review) {
+                  fetch(`/api/reviews/${review.id}/track`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "skipped", event_id: eventId, session_id: getSessionId() }),
+                  });
+                }
+                fetchReview(review?.id);
+              }}
               disabled={loading}
               className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 disabled:opacity-50"
             >

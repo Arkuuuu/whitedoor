@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReviewUploadForm } from "@/components/admin/ReviewUploadForm";
+import Image from "next/image";
 import { Plus, Archive, Trash2, RotateCcw, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { Event, Review } from "@/lib/types";
@@ -164,12 +165,27 @@ export default function ReviewsPage() {
                 >
                   <td className="px-5 py-4 max-w-xs">
                     <p className="truncate text-gray-800">{review.review_text}</p>
-                    {review.review_type && review.review_type !== "TEXT_ONLY" && (
-                      <span className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 font-medium">
-                        <ImageIcon className="w-3 h-3" />
-                        {review.review_type === "SINGLE_IMAGE" ? "1 photo" : "2–3 photos"}
-                      </span>
-                    )}
+                    {review.review_images && review.review_images.length > 0 ? (
+                      <div className="flex items-center gap-1 mt-1.5">
+                        {[...review.review_images]
+                          .sort((a, b) => a.display_order - b.display_order)
+                          .map((ri) => (
+                            <div key={ri.id} className="relative w-8 h-8 rounded overflow-hidden shrink-0 border border-gray-200">
+                              <Image
+                                src={ri.images.image_url}
+                                alt={ri.images.title ?? ""}
+                                fill
+                                className="object-cover"
+                                sizes="32px"
+                              />
+                            </div>
+                          ))}
+                        <span className="text-xs text-blue-600 font-medium flex items-center gap-0.5 ml-1">
+                          <ImageIcon className="w-3 h-3" />
+                          {review.review_images.length}
+                        </span>
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-5 py-4 text-gray-500 hidden md:table-cell">
                     {getEventName(review.event_id)}

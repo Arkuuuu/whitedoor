@@ -2,9 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { DeleteEventButton } from "./DeleteEventButton";
+import { QRCodeButton } from "@/components/admin/QRCodeButton";
 
 export default async function EventsPage() {
   const supabase = await createClient();
@@ -62,6 +63,7 @@ export default async function EventsPage() {
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2 justify-end">
+                      <QRCodeButton eventId={event.id} eventName={event.name} />
                       <Link
                         href={`/admin/dashboard/events/${event.id}`}
                         className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, CheckCircle2, XCircle, FileSpreadsheet, Info, Copy, Download } from "lucide-react";
+import { Upload, CheckCircle2, XCircle, FileSpreadsheet, Info, Download } from "lucide-react";
 import { toast } from "sonner";
 import type { Image as ImageType } from "@/lib/types";
 
@@ -28,7 +28,6 @@ export default function ImportsPage() {
   const [images, setImages] = useState<ImageType[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [showImages, setShowImages] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
@@ -76,13 +75,6 @@ export default function ImportsPage() {
   const handleShowImages = () => {
     if (!showImages) loadImages();
     setShowImages((v) => !v);
-  };
-
-  const copyId = (id: string) => {
-    navigator.clipboard.writeText(id).then(() => {
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 1500);
-    });
   };
 
   return (
@@ -151,14 +143,14 @@ export default function ImportsPage() {
         </p>
       </div>
 
-      {/* ── Image ID lookup ── */}
+      {/* ── Image title browser ── */}
       <div>
         <button
           onClick={handleShowImages}
           className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1.5"
         >
           <FileSpreadsheet className="w-4 h-4" />
-          {showImages ? "Hide" : "Show"} uploaded image IDs
+          {showImages ? "Hide" : "Browse"} uploaded images &amp; titles
         </button>
 
         {showImages && (
@@ -171,15 +163,14 @@ export default function ImportsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Title</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Title (use this in Excel)</th>
                     <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Status</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">UUID (click to copy)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {images.map((img) => (
                     <tr key={img.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-gray-700">{img.title ?? "—"}</td>
+                      <td className="px-4 py-2 font-medium text-gray-800">{img.title ?? <span className="text-gray-400 italic">no title</span>}</td>
                       <td className="px-4 py-2">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           img.status === "available"
@@ -192,19 +183,6 @@ export default function ImportsPage() {
                         }`}>
                           {img.status ?? "available"}
                         </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <button
-                          onClick={() => copyId(img.id)}
-                          className="flex items-center gap-1.5 font-mono text-xs text-gray-500 hover:text-blue-600 transition-colors"
-                        >
-                          {copiedId === img.id ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                          {img.id}
-                        </button>
                       </td>
                     </tr>
                   ))}

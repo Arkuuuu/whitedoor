@@ -122,6 +122,15 @@ export default function ImagesPage() {
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 loading="lazy"
               />
+              {/* Status badge — always visible */}
+              <div className={`absolute top-1.5 left-1.5 text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                img.status === "available" ? "bg-green-500/90 text-white" :
+                img.status === "reserved" ? "bg-yellow-500/90 text-white" :
+                img.status === "used" ? "bg-gray-500/80 text-white" :
+                "bg-red-500/80 text-white"
+              }`}>
+                {img.status ?? "available"}
+              </div>
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors duration-200">
                 <div className="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
                   <span className="text-white text-xs flex items-center gap-1">

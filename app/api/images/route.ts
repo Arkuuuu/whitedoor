@@ -38,12 +38,14 @@ export async function POST(request: NextRequest) {
   const title = formData.get("title") as string | null;
   const file = formData.get("file") as File | null;
 
-  if (!file || !eventId) {
+  if (!file) {
     return NextResponse.json(
-      { error: "file and event_id are required" },
+      { error: "file is required" },
       { status: 400 }
     );
   }
+  // "general" or empty string → null (not linked to any event)
+  const resolvedEventId = (eventId && eventId !== "general") ? eventId : null;
 
   const fileExt = file.name.split(".").pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("images")
-    .insert({ event_id: eventId, image_url: publicUrl, title: title ?? null })
+    .insert({ event_id: resolvedEventId, image_url: publicUrl, title: title ?? null })
     .select()
     .single();
 
@@ -71,6 +73,6 @@ export async function POST(request: NextRequest) {
   }
 
   revalidateTag("images", "max");
-  revalidateTag(`images-${eventId}`, "max");
+  if (resolvedEventId) revalidateTag(`images-${resolvedEventId}`, "max");
   return NextResponse.json(data, { status: 201 });
 }

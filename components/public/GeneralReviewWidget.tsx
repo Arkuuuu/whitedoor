@@ -213,7 +213,16 @@ export function GeneralReviewWidget() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => fetchReview(review?.id)}
+          onClick={() => {
+            if (review) {
+              fetch(`/api/reviews/${review.id}/track`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "skipped", session_id: getSessionId() }),
+              });
+            }
+            fetchReview(review?.id);
+          }}
           disabled={loading}
           className="gap-1.5"
         >

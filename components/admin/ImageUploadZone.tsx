@@ -58,6 +58,7 @@ export function ImageUploadZone({ events, onSuccess }: ImageUploadZoneProps) {
       toast.error("Select an event and add images");
       return;
     }
+
     setUploading(true);
     let success = 0;
     let failed = 0;
@@ -93,6 +94,7 @@ export function ImageUploadZone({ events, onSuccess }: ImageUploadZoneProps) {
             <SelectValue placeholder="Select an event…" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="general">General (no event)</SelectItem>
             {activeEvents.map((ev) => (
               <SelectItem key={ev.id} value={ev.id}>
                 {ev.name}
