@@ -24,6 +24,9 @@ interface ImportResult {
   error?: string;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function normalizeHeader(h: unknown): string {
   return String(h ?? "")
     .toLowerCase()
@@ -37,14 +40,13 @@ function parseSheet<T extends Record<string, string>>(
   required: string[]
 ): { rows: T[]; error?: string } {
   const ws = wb.Sheets[sheetName];
-  if (!ws) {
-    return { rows: [], error: `Sheet "${sheetName}" not found` };
-  }
+  if (!ws) return { rows: [], error: `Sheet "${sheetName}" not found` };
 
-  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+    defval: "",
+  });
   if (raw.length === 0) return { rows: [] };
 
-  // Normalize headers by remapping each row
   const rows = raw.map((r) => {
     const normalized: Record<string, string> = {};
     for (const [k, v] of Object.entries(r)) {
@@ -67,7 +69,9 @@ function parseSheet<T extends Record<string, string>>(
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -76,7 +80,6 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
-
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
@@ -86,7 +89,10 @@ export async function POST(request: NextRequest) {
   try {
     wb = XLSX.read(buffer, { type: "buffer" });
   } catch {
-    return NextResponse.json({ error: "Could not read file. Please upload a valid .xlsx or .csv" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Could not read file. Please upload a valid .xlsx or .csv" },
+      { status: 400 }
+    );
   }
 
   // ── Parse Reviews sheet ───────────────────────────────────────────────────
@@ -95,31 +101,80 @@ export async function POST(request: NextRequest) {
     "Reviews",
     ["local_id", "event_id", "review_text"]
   );
-
   if (reviewSheetError) {
     return NextResponse.json({ error: reviewSheetError }, { status: 400 });
   }
   if (reviewRows.length === 0) {
-    return NextResponse.json({ error: "Reviews sheet is empty" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Reviews sheet is empty" },
+      { status: 400 }
+    );
   }
 
   // ── Parse Mapping sheet (optional) ───────────────────────────────────────
-  const { rows: mappingRows } = parseSheet<MappingRow>(wb, "Mapping", ["review_id"]);
+  const { rows: mappingRows } = parseSheet<MappingRow>(wb, "Mapping", [
+    "review_id",
+  ]);
 
-  // Build lookup: local_review_id → [image_uuid, ...]
-  const mappingByLocalId = new Map<string, string[]>();
+  // Build lookup: local_review_id → [raw image ref (title or UUID), ...]
+  const rawMappingByLocalId = new Map<string, string[]>();
   for (const row of mappingRows) {
-    const imgs = [row.image_1, row.image_2, row.image_3]
+    const refs = [row.image_1, row.image_2, row.image_3]
       .map((v) => v?.trim() ?? "")
       .filter((v) => v.length > 0);
-    if (imgs.length > 0) {
-      mappingByLocalId.set(row.review_id, imgs);
+    if (refs.length > 0) rawMappingByLocalId.set(row.review_id, refs);
+  }
+
+  // ── Resolve image titles → UUIDs ──────────────────────────────────────────
+  // Each cell in image_1/2/3 can be either an image title OR a UUID.
+  // Titles are matched case-insensitively against the `title` column in images.
+  const allRawRefs = [...new Set([...rawMappingByLocalId.values()].flat())];
+  const titleRefs = allRawRefs.filter((r) => !UUID_RE.test(r));
+  const titleToId = new Map<string, string>(); // normalizedTitle → image UUID
+
+  if (titleRefs.length > 0) {
+    const { data: byTitle, error: titleLookupError } = await admin
+      .from("images")
+      .select("id, title");
+
+    if (titleLookupError) {
+      return NextResponse.json(
+        { error: `Failed to look up images: ${titleLookupError.message}` },
+        { status: 500 }
+      );
+    }
+
+    for (const img of byTitle ?? []) {
+      if (img.title) {
+        titleToId.set(img.title.toLowerCase().trim(), img.id);
+      }
+    }
+
+    const unresolved = titleRefs.filter(
+      (t) => !titleToId.has(t.toLowerCase().trim())
+    );
+    if (unresolved.length > 0) {
+      return NextResponse.json(
+        {
+          error: `These image titles were not found — check spelling matches exactly what you typed when uploading: ${unresolved.join(", ")}`,
+        },
+        { status: 400 }
+      );
     }
   }
 
-  // ── Validate image UUIDs exist in DB ─────────────────────────────────────
+  // Replace raw refs with resolved UUIDs
+  const mappingByLocalId = new Map<string, string[]>();
+  for (const [localId, rawRefs] of rawMappingByLocalId) {
+    const resolved = rawRefs.map((raw) => {
+      if (UUID_RE.test(raw)) return raw; // already a UUID
+      return titleToId.get(raw.toLowerCase().trim()) ?? raw;
+    });
+    mappingByLocalId.set(localId, resolved);
+  }
+
+  // ── Validate resolved UUIDs exist in DB ───────────────────────────────────
   const allImageIds = [...new Set([...mappingByLocalId.values()].flat())];
-  let validImageIds = new Set<string>();
 
   if (allImageIds.length > 0) {
     const { data: existingImages } = await admin
@@ -127,19 +182,16 @@ export async function POST(request: NextRequest) {
       .select("id")
       .in("id", allImageIds);
 
-    validImageIds = new Set((existingImages ?? []).map((img) => img.id));
-
-    const invalidIds = allImageIds.filter((id) => !validImageIds.has(id));
-    if (invalidIds.length > 0) {
+    const validIds = new Set((existingImages ?? []).map((img) => img.id));
+    const invalid = allImageIds.filter((id) => !validIds.has(id));
+    if (invalid.length > 0) {
       return NextResponse.json(
-        {
-          error: `The following image IDs were not found in the system: ${invalidIds.join(", ")}`,
-        },
+        { error: `Image IDs not found in system: ${invalid.join(", ")}` },
         { status: 400 }
       );
     }
 
-    // Check no image is already linked to another review
+    // Ensure no image is already linked to another review
     const { data: alreadyLinked } = await admin
       .from("review_images")
       .select("image_id")
@@ -192,7 +244,8 @@ export async function POST(request: NextRequest) {
         .select("id")
         .single();
 
-      if (insertError || !created) throw new Error(insertError?.message ?? "Insert failed");
+      if (insertError || !created)
+        throw new Error(insertError?.message ?? "Insert failed");
 
       let imagesLinked = 0;
       if (imageIds.length > 0) {
@@ -201,8 +254,13 @@ export async function POST(request: NextRequest) {
           image_id: imageId,
           display_order: idx,
         }));
-        const { error: linkError } = await admin.from("review_images").insert(imageRows);
-        if (linkError) throw new Error(`Review created but images failed to link: ${linkError.message}`);
+        const { error: linkError } = await admin
+          .from("review_images")
+          .insert(imageRows);
+        if (linkError)
+          throw new Error(
+            `Review created but images failed to link: ${linkError.message}`
+          );
         imagesLinked = imageIds.length;
       }
 

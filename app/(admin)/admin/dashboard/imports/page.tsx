@@ -138,16 +138,16 @@ export default function ImportsPage() {
               </thead>
               <tbody className="text-blue-800">
                 <tr><td className="py-0.5 pr-3 font-mono">review_id</td><td>Matches local_id above</td></tr>
-                <tr><td className="py-0.5 pr-3 font-mono">image_1</td><td>Image UUID (from panel below)</td></tr>
-                <tr><td className="py-0.5 pr-3 font-mono">image_2</td><td>Optional</td></tr>
-                <tr><td className="py-0.5 pr-3 font-mono">image_3</td><td>Optional</td></tr>
+                <tr><td className="py-0.5 pr-3 font-mono">image_1</td><td>Image <span className="font-semibold">title</span> (set when uploading)</td></tr>
+                <tr><td className="py-0.5 pr-3 font-mono">image_2</td><td>Optional — leave blank if unused</td></tr>
+                <tr><td className="py-0.5 pr-3 font-mono">image_3</td><td>Optional — leave blank if unused</td></tr>
               </tbody>
             </table>
           </div>
         </div>
         <p className="text-xs text-blue-700">
-          review_type is set automatically: 0 images = TEXT_ONLY, 1 = SINGLE_IMAGE, 2–3 = MULTI_IMAGE.
-          Images must be uploaded first via the Images page.
+          Use the <span className="font-semibold">title</span> you gave each image when uploading (case-insensitive).
+          review_type is auto-detected: 0 images = TEXT_ONLY, 1 = SINGLE_IMAGE, 2–3 = MULTI_IMAGE.
         </p>
       </div>
 
