@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -30,7 +30,6 @@ export function ReviewContent() {
   const eventId = params.id as string;
 
   const [review, setReview] = useState<Review | null>(null);
-  const [images, setImages] = useState<ImageType[]>([]);
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
@@ -39,6 +38,14 @@ export function ReviewContent() {
   const [googleOpened, setGoogleOpened] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [error, setError] = useState("");
+
+  // Extract linked images sorted by display_order
+  const linkedImages = useMemo<ImageType[]>(() => {
+    if (!review?.review_images || review.review_images.length === 0) return [];
+    return [...review.review_images]
+      .sort((a, b) => a.display_order - b.display_order)
+      .map((ri) => ri.images);
+  }, [review]);
 
   const fetchReview = useCallback(
     async (excludeCurrentId?: string) => {
@@ -65,7 +72,7 @@ export function ReviewContent() {
         fetch(`/api/reviews/${data.id}/track`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "viewed" }),
+          body: JSON.stringify({ action: "viewed", event_id: eventId, session_id: getSessionId() }),
         });
       } catch {
         setError("Failed to load review. Please try again.");
@@ -78,19 +85,14 @@ export function ReviewContent() {
 
   useEffect(() => {
     fetchReview();
-    Promise.all([
-      fetch(`/api/events/${eventId}`).then((r) => r.json()),
-      fetch(`/api/images?eventId=${eventId}`).then((r) => r.json()),
-    ]).then(([ev, imgs]) => {
-      setEvent(ev?.id ? ev : null);
-      setImages(Array.isArray(imgs) ? imgs : []);
-    });
+    fetch(`/api/events/${eventId}`)
+      .then((r) => r.json())
+      .then((ev) => setEvent(ev?.id ? ev : null));
   }, [eventId, fetchReview]);
 
-  // Detect when user returns from the Google Reviews tab
+  // Detect return from Google Reviews tab
   useEffect(() => {
     if (!googleOpened) return;
-    // Short delay prevents false-positive from the open itself
     const tid = setTimeout(() => {
       const onVisible = () => {
         if (document.visibilityState === "visible") setShowConfirmation(true);
@@ -106,7 +108,7 @@ export function ReviewContent() {
     return () => clearTimeout(tid);
   }, [googleOpened]);
 
-  // ── Copy review only ──────────────────────────────────────────────────────
+  // ── Copy review ───────────────────────────────────────────────────────────
   async function handleCopyReview() {
     if (!review) return;
     const text = review.review_text;
@@ -154,12 +156,12 @@ export function ReviewContent() {
     }
   }
 
-  // ── Download all photos ───────────────────────────────────────────────────
+  // ── Download all linked photos ────────────────────────────────────────────
   async function handleDownloadAll() {
-    if (downloadingAll || images.length === 0) return;
+    if (downloadingAll || linkedImages.length === 0) return;
     setDownloadingAll(true);
     let failed = 0;
-    for (const image of images) {
+    for (const image of linkedImages) {
       try {
         await downloadPhoto(image);
         await new Promise((r) => setTimeout(r, 350));
@@ -169,32 +171,29 @@ export function ReviewContent() {
     }
     setDownloadingAll(false);
     if (failed === 0) {
-      toast.success(`${images.length} photo${images.length > 1 ? "s" : ""} downloaded`);
+      toast.success(`${linkedImages.length} photo${linkedImages.length > 1 ? "s" : ""} downloaded`);
     } else {
       toast.error(`${failed} photo${failed > 1 ? "s" : ""} couldn't download — use individual buttons`);
     }
   }
 
   // ── Post on Google ────────────────────────────────────────────────────────
-  // IMPORTANT: This handler ONLY copies the review and opens the Google URL.
-  // Photo downloads are intentionally separate — bundling them causes permission
-  // dialogs that block window.open on mobile and create blank-tab issues on desktop.
+  // Only copies the review + opens the URL — no downloads, no permission prompts.
+  // Downloads are intentionally a separate user action to avoid browser blocking window.open.
   async function handlePostOnGoogle() {
     if (!review || !event?.google_review_url) return;
     const googleUrl = event.google_review_url;
-    const reviewText = review.review_text;
     const reviewId = review.id;
     setPosting(true);
 
-    // Step 1: Copy review text (try async clipboard, fall back to execCommand)
     let copied = false;
     try {
-      await navigator.clipboard.writeText(reviewText);
+      await navigator.clipboard.writeText(review.review_text);
       copied = true;
     } catch {
       try {
         const ta = document.createElement("textarea");
-        ta.value = reviewText;
+        ta.value = review.review_text;
         ta.style.cssText = "position:fixed;left:-9999px;top:0";
         document.body.appendChild(ta);
         ta.select();
@@ -203,7 +202,7 @@ export function ReviewContent() {
       } catch {}
     }
 
-    // Step 2: Reserve review + track analytics (fire-and-forget, no awaiting)
+    // Fire-and-forget: reserve + analytics
     fetch(`/api/reviews/${reviewId}/reserve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -213,12 +212,10 @@ export function ReviewContent() {
       fetch(`/api/reviews/${reviewId}/track`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "copied" }),
+        body: JSON.stringify({ action: "copied", event_id: eventId, session_id: getSessionId() }),
       });
     }
 
-    // Step 3: Toast + open Google Reviews — no awaiting means no permission
-    // dialogs can interrupt window.open
     toast.success(
       copied
         ? "✓ Review copied! Opening Google Reviews…"
@@ -241,9 +238,9 @@ export function ReviewContent() {
     await fetch(`/api/reviews/${usedId}/track`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "used" }),
+      body: JSON.stringify({ action: "used", event_id: eventId, session_id: getSessionId() }),
     });
-    toast.success("Thank you for your feedback!");
+    toast.success("Thank you for your review!");
     fetchReview(usedId);
   }
 
@@ -257,6 +254,7 @@ export function ReviewContent() {
   }
 
   const hasGoogleUrl = !!event?.google_review_url;
+  const hasImages = linkedImages.length > 0;
 
   return (
     <>
@@ -342,12 +340,12 @@ export function ReviewContent() {
           </Button>
         </div>
 
-        {/* ── Step 2: Photos (download before posting) ── */}
-        {images.length > 0 && (
+        {/* ── Step 2: Review-linked photos ── */}
+        {hasImages && (
           <div className="mb-2">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                Photos You Can Use ({images.length})
+                Photos to Include ({linkedImages.length})
               </p>
               <button
                 onClick={handleDownloadAll}
@@ -360,7 +358,7 @@ export function ReviewContent() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {images.map((image) => (
+              {linkedImages.map((image) => (
                 <div
                   key={image.id}
                   className="rounded-xl overflow-hidden bg-gray-100 shadow-sm"
@@ -368,7 +366,7 @@ export function ReviewContent() {
                   <div className="relative aspect-square">
                     <Image
                       src={image.image_url}
-                      alt={image.title ?? "Event photo"}
+                      alt={image.title ?? "Review photo"}
                       fill
                       className="object-cover"
                       sizes="(max-width: 640px) 50vw, 33vw"
@@ -392,7 +390,7 @@ export function ReviewContent() {
       {/* ── Sticky bottom action bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-100 shadow-lg">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 space-y-3">
-          {images.length > 0 && (
+          {hasImages && (
             <p className="text-xs text-center text-gray-400">
               Download photos above first, then post your review
             </p>

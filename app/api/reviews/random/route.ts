@@ -5,24 +5,47 @@ async function releaseExpiredReservations(eventId: string) {
   const supabase = await createAdminClient();
   const now = new Date().toISOString();
 
-  // Find reservation records that have expired
   const { data: expired } = await supabase
     .from("review_reservations")
     .select("review_id")
     .lt("expires_at", now);
 
   if (expired && expired.length > 0) {
-    const ids = expired.map((r) => r.review_id);
-    // Reset those reviews to active
+    const reviewIds = expired.map((r) => r.review_id);
+
+    // Release linked images back to available
+    const { data: linkedImages } = await supabase
+      .from("review_images")
+      .select("image_id")
+      .in("review_id", reviewIds);
+
+    if (linkedImages && linkedImages.length > 0) {
+      await supabase
+        .from("images")
+        .update({ status: "available" })
+        .in("id", linkedImages.map((li) => li.image_id))
+        .eq("status", "reserved");
+    }
+
     await supabase
       .from("reviews")
       .update({ status: "active" })
-      .in("id", ids)
+      .in("id", reviewIds)
       .eq("status", "reserved");
-    // Clean up expired reservation rows
+
     await supabase.from("review_reservations").delete().lt("expires_at", now);
   }
 }
+
+const REVIEW_SELECT = `
+  *,
+  review_images(
+    id,
+    image_id,
+    display_order,
+    images(id, image_url, title, status, downloads)
+  )
+` as const;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -33,7 +56,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "eventId is required" }, { status: 400 });
   }
 
-  // Release any reservations that have expired before choosing the next review
   await releaseExpiredReservations(eventId);
 
   const supabase = await createClient();
@@ -41,7 +63,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("reviews")
-    .select("*")
+    .select(REVIEW_SELECT)
     .eq("event_id", eventId)
     .eq("status", "active");
 
@@ -55,11 +77,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // All shown/excluded — reset session and pick from full active pool
+  // All shown/excluded — reset session pool
   if (!data || data.length === 0) {
     const { data: allData, error: allError } = await supabase
       .from("reviews")
-      .select("*")
+      .select(REVIEW_SELECT)
       .eq("event_id", eventId)
       .eq("status", "active");
 

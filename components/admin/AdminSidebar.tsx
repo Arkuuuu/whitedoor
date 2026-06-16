@@ -8,6 +8,7 @@ import {
   MessageSquareText,
   Images,
   BarChart3,
+  Upload,
   LogOut,
   Menu,
   X,
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/admin/dashboard/events", label: "Events", icon: CalendarDays },
   { href: "/admin/dashboard/reviews", label: "Reviews", icon: MessageSquareText },
   { href: "/admin/dashboard/images", label: "Images", icon: Images },
+  { href: "/admin/dashboard/imports", label: "Imports", icon: Upload },
   { href: "/admin/dashboard/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
@@ -67,7 +69,7 @@ export function AdminSidebar() {
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
+              <Icon className="w-4 h-4 shrink-0" />
               {label}
             </Link>
           );

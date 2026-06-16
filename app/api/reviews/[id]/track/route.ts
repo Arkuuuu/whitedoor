@@ -7,9 +7,10 @@ export async function POST(
 ) {
   const { id } = await params;
   const supabase = await createAdminClient();
-  const { action } = await request.json();
+  const { action, event_id, session_id } = await request.json();
 
-  if (!["viewed", "copied", "used"].includes(action)) {
+  const validActions = ["viewed", "copied", "used", "photo_downloaded", "skipped"];
+  if (!validActions.includes(action)) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
 
@@ -28,18 +29,42 @@ export async function POST(
       ? { times_shown: review.times_shown + 1 }
       : action === "copied"
       ? { times_copied: review.times_copied + 1 }
-      : { times_used: review.times_used + 1, status: "archived" };
+      : action === "used"
+      ? { times_used: review.times_used + 1, status: "archived" }
+      : null;
 
-  const { error: updateError } = await supabase
-    .from("reviews")
-    .update(updateField)
-    .eq("id", id);
+  if (updateField) {
+    const { error: updateError } = await supabase
+      .from("reviews")
+      .update(updateField)
+      .eq("id", id);
 
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
   }
 
-  await supabase.from("activity_logs").insert({ review_id: id, action });
+  // When a review is used, permanently retire its linked images
+  if (action === "used") {
+    const { data: linkedImages } = await supabase
+      .from("review_images")
+      .select("image_id")
+      .eq("review_id", id);
+
+    if (linkedImages && linkedImages.length > 0) {
+      await supabase
+        .from("images")
+        .update({ status: "used" })
+        .in("id", linkedImages.map((li) => li.image_id));
+    }
+  }
+
+  await supabase.from("activity_logs").insert({
+    review_id: id,
+    event_id: event_id ?? null,
+    session_id: session_id ?? null,
+    action,
+  });
 
   return NextResponse.json({ success: true });
 }
