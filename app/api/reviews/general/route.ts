@@ -8,6 +8,16 @@ function supabase() {
   );
 }
 
+const REVIEW_SELECT = `
+  *,
+  review_images(
+    id,
+    image_id,
+    display_order,
+    images(id, image_url, title, status, downloads)
+  )
+` as const;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const excludeRaw = searchParams.get("exclude") ?? "";
@@ -17,7 +27,7 @@ export async function GET(request: NextRequest) {
 
   let query = db
     .from("reviews")
-    .select("*")
+    .select(REVIEW_SELECT)
     .is("event_id", null)
     .eq("status", "active");
 
@@ -35,7 +45,7 @@ export async function GET(request: NextRequest) {
     // All excluded — reset and pick from full pool
     const { data: allData, error: allError } = await db
       .from("reviews")
-      .select("*")
+      .select(REVIEW_SELECT)
       .is("event_id", null)
       .eq("status", "active");
 

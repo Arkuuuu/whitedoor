@@ -14,7 +14,7 @@ export interface Event {
 
 export interface Image {
   id: string;
-  event_id: string;
+  event_id: string | null;
   image_url: string;
   title: string | null;
   status: ImageStatus;

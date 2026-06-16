@@ -47,7 +47,7 @@ async function EventContent({ params }: { params: Promise<{ id: string }> }) {
             alt={event.name}
             fill
             className="object-cover"
-            preload
+            priority
           />
         </div>
       )}

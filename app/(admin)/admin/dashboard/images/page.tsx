@@ -45,8 +45,8 @@ export default function ImagesPage() {
     loadData();
   }, [loadData]);
 
-  const getEventName = (id: string) =>
-    events.find((e) => e.id === id)?.name ?? "Unknown";
+  const getEventName = (id: string | null) =>
+    id ? (events.find((e) => e.id === id)?.name ?? "Unknown") : "General";
 
   const filtered =
     filterEventId === "all" ? images : images.filter((img) => img.event_id === filterEventId);
