@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReviewUploadForm } from "@/components/admin/ReviewUploadForm";
-import { Plus, Archive, Trash2, RotateCcw } from "lucide-react";
+import { Plus, Archive, Trash2, RotateCcw, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { Event, Review } from "@/lib/types";
 
@@ -164,6 +164,12 @@ export default function ReviewsPage() {
                 >
                   <td className="px-5 py-4 max-w-xs">
                     <p className="truncate text-gray-800">{review.review_text}</p>
+                    {review.review_type && review.review_type !== "TEXT_ONLY" && (
+                      <span className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 font-medium">
+                        <ImageIcon className="w-3 h-3" />
+                        {review.review_type === "SINGLE_IMAGE" ? "1 photo" : "2–3 photos"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-4 text-gray-500 hidden md:table-cell">
                     {getEventName(review.event_id)}
