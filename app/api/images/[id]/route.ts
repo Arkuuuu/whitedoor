@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export async function DELETE(
   _request: NextRequest,
@@ -12,6 +12,23 @@ export async function DELETE(
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const admin = await createAdminClient();
+
+  // Block deletion if this image is linked to a review
+  const { data: linked } = await admin
+    .from("review_images")
+    .select("review_id")
+    .eq("image_id", id)
+    .limit(1)
+    .maybeSingle();
+
+  if (linked) {
+    return NextResponse.json(
+      { error: "This image is linked to a review and cannot be deleted. Remove the review first." },
+      { status: 409 }
+    );
   }
 
   const { data: image } = await supabase

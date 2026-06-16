@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export async function PUT(
   request: NextRequest,
@@ -40,6 +40,20 @@ export async function DELETE(
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Reset linked images back to available before deleting the review
+  const admin = await createAdminClient();
+  const { data: linkedImages } = await admin
+    .from("review_images")
+    .select("image_id")
+    .eq("review_id", id);
+
+  if (linkedImages && linkedImages.length > 0) {
+    await admin
+      .from("images")
+      .update({ status: "available" })
+      .in("id", linkedImages.map((li) => li.image_id));
   }
 
   const { error } = await supabase.from("reviews").delete().eq("id", id);

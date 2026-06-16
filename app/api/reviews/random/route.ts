@@ -90,18 +90,9 @@ export async function GET(request: NextRequest) {
     }
 
     const review = allData[Math.floor(Math.random() * allData.length)];
-    await supabase
-      .from("reviews")
-      .update({ times_shown: review.times_shown + 1 })
-      .eq("id", review.id);
     return NextResponse.json({ ...review, poolReset: true });
   }
 
   const review = data[Math.floor(Math.random() * data.length)];
-  await supabase
-    .from("reviews")
-    .update({ times_shown: review.times_shown + 1 })
-    .eq("id", review.id);
-
   return NextResponse.json(review);
 }

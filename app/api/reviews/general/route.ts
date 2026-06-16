@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/server";
 
-function supabase() {
+function readClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest) {
   const excludeRaw = searchParams.get("exclude") ?? "";
   const excludeIds = excludeRaw ? excludeRaw.split(",").filter(Boolean) : [];
 
-  const db = supabase();
+  const db = readClient();
+  const admin = await createAdminClient();
 
   let query = db
     .from("reviews")
@@ -54,11 +56,11 @@ export async function GET(request: NextRequest) {
     }
 
     const review = allData[Math.floor(Math.random() * allData.length)];
-    await db.from("reviews").update({ times_shown: review.times_shown + 1 }).eq("id", review.id);
+    await admin.from("reviews").update({ times_shown: review.times_shown + 1 }).eq("id", review.id);
     return NextResponse.json({ ...review, poolReset: true });
   }
 
   const review = data[Math.floor(Math.random() * data.length)];
-  await db.from("reviews").update({ times_shown: review.times_shown + 1 }).eq("id", review.id);
+  await admin.from("reviews").update({ times_shown: review.times_shown + 1 }).eq("id", review.id);
   return NextResponse.json(review);
 }

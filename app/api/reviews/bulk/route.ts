@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import * as XLSX from "xlsx";
 
 export async function POST(request: NextRequest) {
@@ -52,12 +52,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No reviews found in file" }, { status: 400 });
   }
 
+  const admin = await createAdminClient();
   const rows = reviewTexts.map((text) => ({
     event_id: eventId && eventId !== "__general__" ? eventId : null,
     review_text: text,
+    review_type: "TEXT_ONLY" as const,
   }));
 
-  const { data, error } = await supabase.from("reviews").insert(rows).select();
+  const { data, error } = await admin.from("reviews").insert(rows).select();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

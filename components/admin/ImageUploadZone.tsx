@@ -55,10 +55,9 @@ export function ImageUploadZone({ events, onSuccess }: ImageUploadZoneProps) {
 
   async function handleUpload() {
     if (!eventId || files.length === 0) {
-      toast.error("Select an event and add images");
+      toast.error("Select a destination and add images");
       return;
     }
-
     setUploading(true);
     let success = 0;
     let failed = 0;

@@ -3,6 +3,11 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const eventId = searchParams.get("eventId");
 

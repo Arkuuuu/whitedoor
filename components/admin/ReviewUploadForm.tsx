@@ -129,8 +129,9 @@ export function ReviewUploadForm({ events, onSuccess }: ReviewUploadFormProps) {
       fd.append("event_id", eventId);
       fd.append("file", bulkFile);
       const res = await fetch("/api/reviews/bulk", { method: "POST", body: fd });
-      if (!res.ok) throw new Error((await res.json()).error);
-      const { inserted } = await res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const { inserted } = data;
       toast.success(`${inserted} reviews uploaded`);
       setBulkFile(null);
       onSuccess();
