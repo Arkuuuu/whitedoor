@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, description, banner_url, event_date, status } = body;
+  const { name, description, banner_url, event_date, status, google_review_url } = body;
 
   if (!name) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("events")
-    .insert({ name, description, banner_url, event_date, status: status ?? "active" })
+    .insert({ name, description, banner_url, event_date, status: status ?? "active", google_review_url: google_review_url ?? null })
     .select()
     .single();
 

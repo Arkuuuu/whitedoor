@@ -29,6 +29,7 @@ export function EventForm({ event }: EventFormProps) {
   const [description, setDescription] = useState(event?.description ?? "");
   const [eventDate, setEventDate] = useState(event?.event_date ?? "");
   const [status, setStatus] = useState<"active" | "inactive">(event?.status ?? "active");
+  const [googleReviewUrl, setGoogleReviewUrl] = useState(event?.google_review_url ?? "");
   const [bannerUrl, setBannerUrl] = useState(event?.banner_url ?? "");
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState(event?.banner_url ?? "");
@@ -69,6 +70,7 @@ export function EventForm({ event }: EventFormProps) {
         banner_url: finalBannerUrl || null,
         event_date: eventDate || null,
         status,
+        google_review_url: googleReviewUrl || null,
       };
 
       const url = isEdit ? `/api/events/${event.id}` : "/api/events";
@@ -127,6 +129,20 @@ export function EventForm({ event }: EventFormProps) {
           value={eventDate}
           onChange={(e) => setEventDate(e.target.value)}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="google_review_url">Google Review URL</Label>
+        <Input
+          id="google_review_url"
+          type="url"
+          value={googleReviewUrl}
+          onChange={(e) => setGoogleReviewUrl(e.target.value)}
+          placeholder="https://g.page/r/…/review"
+        />
+        <p className="text-xs text-gray-400">
+          The link visitors tap to open your Google review page. Leave blank to hide the &quot;Post on Google&quot; button.
+        </p>
       </div>
 
       <div className="space-y-2">

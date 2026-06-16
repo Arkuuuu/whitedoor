@@ -1,5 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+
+async function releaseExpiredReservations(eventId: string) {
+  const supabase = await createAdminClient();
+  const now = new Date().toISOString();
+
+  // Find reservation records that have expired
+  const { data: expired } = await supabase
+    .from("review_reservations")
+    .select("review_id")
+    .lt("expires_at", now);
+
+  if (expired && expired.length > 0) {
+    const ids = expired.map((r) => r.review_id);
+    // Reset those reviews to active
+    await supabase
+      .from("reviews")
+      .update({ status: "active" })
+      .in("id", ids)
+      .eq("status", "reserved");
+    // Clean up expired reservation rows
+    await supabase.from("review_reservations").delete().lt("expires_at", now);
+  }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -9,6 +32,9 @@ export async function GET(request: NextRequest) {
   if (!eventId) {
     return NextResponse.json({ error: "eventId is required" }, { status: 400 });
   }
+
+  // Release any reservations that have expired before choosing the next review
+  await releaseExpiredReservations(eventId);
 
   const supabase = await createClient();
   const excludeIds = excludeRaw ? excludeRaw.split(",").filter(Boolean) : [];
@@ -29,7 +55,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // If all reviews have been shown, reset and pick from the full pool
+  // All shown/excluded — reset session and pick from full active pool
   if (!data || data.length === 0) {
     const { data: allData, error: allError } = await supabase
       .from("reviews")
@@ -42,12 +68,18 @@ export async function GET(request: NextRequest) {
     }
 
     const review = allData[Math.floor(Math.random() * allData.length)];
-    await supabase.from("reviews").update({ times_shown: review.times_shown + 1 }).eq("id", review.id);
+    await supabase
+      .from("reviews")
+      .update({ times_shown: review.times_shown + 1 })
+      .eq("id", review.id);
     return NextResponse.json({ ...review, poolReset: true });
   }
 
   const review = data[Math.floor(Math.random() * data.length)];
-  await supabase.from("reviews").update({ times_shown: review.times_shown + 1 }).eq("id", review.id);
+  await supabase
+    .from("reviews")
+    .update({ times_shown: review.times_shown + 1 })
+    .eq("id", review.id);
 
   return NextResponse.json(review);
 }

@@ -35,11 +35,11 @@ export async function PUT(
   }
 
   const body = await request.json();
-  const { name, description, banner_url, event_date, status } = body;
+  const { name, description, banner_url, event_date, status, google_review_url } = body;
 
   const { data, error } = await supabase
     .from("events")
-    .update({ name, description, banner_url, event_date, status })
+    .update({ name, description, banner_url, event_date, status, google_review_url: google_review_url ?? null })
     .eq("id", id)
     .select()
     .single();

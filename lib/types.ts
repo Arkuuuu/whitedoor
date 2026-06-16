@@ -5,6 +5,7 @@ export interface Event {
   banner_url: string | null;
   event_date: string | null;
   status: "active" | "inactive";
+  google_review_url: string | null;
   created_at: string;
 }
 
@@ -12,7 +13,7 @@ export interface Review {
   id: string;
   event_id: string | null;
   review_text: string;
-  status: "active" | "archived";
+  status: "active" | "reserved" | "archived";
   times_shown: number;
   times_copied: number;
   times_used: number;
